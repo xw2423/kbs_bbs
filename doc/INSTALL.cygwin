@@ -1,0 +1,180 @@
+$Id: INSTALL.cygwin 10912 2011-09-30 05:38:18Z fancy $
+                        kbs 在 cygwin 上的安装说明
+
+    本文由 kbs 开发组负责维护，介绍了 kbs 在 cygwin 上的编译和安装。
+
+0. ChangeLog
+2008.10.5
+  flyriver v1.1  文档更新，去掉 cygipc，把 apache 改为 lighttpd
+2003.11.27
+  flyriver v1.0  初始版本
+
+1. 需要的软件
+cygwin >= 1.5.25       必须
+libesmtp > 0.8         必须      编译时必须加上 --disable-pthreads 选项
+autoconf-2.57          可选
+automake-1.6.X         可选
+libtool-1.4.3          可选
+mysql5                 可选      选择 mysql 数据库支持才需要
+openssl                可选      选择 pop3d 支持 pop3s 才需要
+gmp                    可选      选择 ssh 方式支持才需要
+lighttpd-1.4.X         可选      选择 web 界面支持才需要
+php5                   可选      选择 web 界面支持才需要
+libxml2                可选      选择 web 界面支持才需要
+libiconv               可选      选择 web 界面支持才需要
+zlib                   可选      选择 web 界面支持才需要
+gd                     可选      选择 web 界面支持才需要
+freetype               可选      选择 web 界面支持才需要
+jpeg                   可选      选择 web 界面支持才需要
+png                    可选      选择 web 界面支持才需要
+iconv                  可选      选择 web 界面支持才需要
+
+注意：
+    a. 其中 libesmtp 在 cygwin 的安装包并不包含，而且在 cygwin 上的编译和安装
+       有些难度，建议直接安装 2.2 节中提到的专门为 cygwin 编译的二进制包
+    b. mysql5 和 php5 并没有包含在 cygwin 的安装包中，需下载源码包编译安装，
+       其余软件直接用 cygwin 自带的包
+
+2. 安装
+    本节介绍 kbs 的 telnet/ssh/web 方式在 cygwin 的安装。
+
+2.1 一些约定
+    $(BBSHOME)         表示 kbs 的安装目录，缺省为 /home/bbs
+    $(WWWHOME)         表示 web 界面的根目录，在本文中指定为 /home/bbs/www
+    $(PHPHOME)         表示 php 的安装目录，在本文中指定为 /home/bbs/php
+    $(SRCDIR)          表示存放 kbs 和 php 源代码的目录，可自己设定一个，
+                       例如放在自己 home 目录的某个子目录下
+
+2.2 安装 libesmtp
+    从 http://dev.kcn.cn/libesmtp-cygwin.tar.gz 下载 libesmtp-cygwin.tar.gz
+二进制包，可放在 $(SRCDIR) 目录下，使用如下命令进行安装：
+          tar zxPf libesmtp-cygwin.tar.gz
+    注意：libesmtp-cygwin.tar.gz 应替换为实际的文件名。
+
+2.3 下载 kbs、mysql 和 php 的代码包
+    建议从 kbs 的 svn 服务器直接下载主分支代码：
+          svn co http://svn.kcn.cn/repos/kbs/trunk kbs
+
+    注意：强烈建议用 cygwin 自带的 svn 命令行来下载 kbs 的代码。强烈建议
+          不用 TortoiseSVN 下载代码，因为 TortoiseSVN 下载的代码很有可能
+          无法在 cygwin 里面正常编译安装。
+
+    mysql 和 php 的代码包可以从官方网站下载，放在 $(SRCDIR) 目录并解开。
+
+2.4 安装 mysql
+    这里仅安装 mysql 的 client 库，不安装 mysql server，因为 cygwin 的性能
+比较差。如果要在 Windows 上运行 mysql server，请直接安装 mysql 官方提供的
+Windows 二进制安装包。
+    进入 mysql 的源代码目录：
+        cd mysql-5.0.XX
+        ./configure --without-server && make && make install
+
+2.5 预安装 php
+    首先切换目录到 $(SRCDIR)，进入 php 的源代码目录。为了节省篇幅，下面
+直接以命令表示。
+        cd ../php-5.2.X
+        ./configure  --prefix=/home/bbs/php --disable-debug --with-pic \
+            --disable-rpath --enable-inline-optimization \
+            --with-pdo-mysql=/usr/local --enable-xml --with-gd \
+            --with-freetype-dir=/usr --with-png-dir --with-iconv \
+            --with-jpeg-dir --with-zlib --enable-fastcgi \
+            --with-config-file-path=/home/bbs/php/etc \
+            --with-config-file-scan-dir=/home/bbs/php/etc/php.d \
+            --with-layout=GNU \
+            && make && make install
+
+2.6 安装 kbs
+    同样切换到 $(SRCDIR) 目录，进入 kbs 的源代码目录。编辑 site/fb2k-v2.h
+文件，填上自己的站点名称等信息，然后执行下面的一系列命令：
+        ./autogen.sh
+        cd sshbbsd; ./autogen.sh; cd ..
+        ./configure --enable-site=fb2k-v2 --with-php=/home/bbs/php \
+            --enable-ssh --enable-innbbsd \
+            && make && make install
+        make install-home
+
+2.7 将 phpbbslib 放入 php
+    同样切换到 $(SRCDIR) 目录，进入 php 的源代码目录。
+          mkdir ext/kbs_bbs
+
+    然后将 kbs 源代码目录 bbs2www/phplib/ 下的 config.m4、php_kbs_bbs.h
+和 *.c 文件复制到 ext/kbs_bbs 目录，然后执行：
+          ./buildconf --force
+
+2.8 再次编译安装 php
+        ./configure  --prefix=/home/bbs/php --disable-debug --with-pic \
+            --disable-rpath --enable-inline-optimization \
+            --with-pdo-mysql=/usr/local --enable-xml --with-gd \
+            --with-freetype-dir=/usr --with-png-dir --with-iconv \
+            --with-jpeg-dir --with-zlib --enable-fastcgi \
+            --with-config-file-path=/home/bbs/php/etc \
+            --with-config-file-scan-dir=/home/bbs/php/etc/php.d \
+            --with-layout=GNU --enable-kbs_bbs \
+            && make && make install
+
+    如果一切顺利，至此 kbs 和 php 都已经安装完毕。
+
+3. 运行之前的配置
+    本节主要说明 ipc、ssh 和 web 的配置。
+
+3.1 ipc 配置
+    退出所有的 cygwin shell，然后在系统的环境变量中加入 CYGWIN=server。
+    再次进入 cygwin shell，如果没有配置过 cygserver，运行
+        cygserver-config
+
+    该命令将在 /etc 目录产生缺省的 cygserver 配置文件，并安装 cygserver
+系统服务，可以在系统服务中启动 cygserver 服务。
+
+3.2 ssh 配置
+    请参考 doc/INSTALL.ssh 文件。
+    懒人可以用如下命令产生最简单的可用的配置文件（不推荐）：
+        touch $(BBSHOME)/etc/sshd_config
+        ssh-keygen -t rsa1 -f $(BBSHOME)/etc/ssh_host_key
+
+3.3 lighttpd 配置
+    首先复制 lighttpd 的默认配置文件：
+        cp /etc/lighttpd/lighttpd.conf.default /home/bbs/php/etc/lighttpd.conf
+
+    然后编辑 lighttpd.conf 文件：
+    a. 把 server.modules 中的 mod_fastcgi 启用
+    b. 把 server.document-root 改为 /home/bbs/www/
+    c. 把 fastcgi.server 配置为
+        fastcgi.server = ( ".php" =>
+                           ( "localhost" =>
+                             (
+                             "host" => "127.0.0.1","port" => 521,
+                             "check-local" => "disable",
+                             "disable-time" => 30
+                             )
+                           )
+                         )
+
+    建立 /home/bbs/www 目录，然后把 kbs 源代码中的 www2/ 目录下的所有文件和
+子目录复制到 /home/bbs/www 里面。
+
+3.4 php 配置
+    在 /home/bbs/php/etc 里面建立 php.d/ 子目录，然后在 php.d/ 子目录中建立
+lighttpd.ini 文件，内容只有一行：
+        cgi.fix_pathinfo = 1
+        
+4. 运行
+
+4.1 运行 kbs
+        cd /home/bbs/bin
+        ./miscd daemon
+        ./bbslogd
+        ./bbsd -p 23
+        ./sshbbsd
+
+    然后 telnet localhost，注册 SYSOP 和 guest 两个帐号。
+
+4.2 运行 lighttpd
+        spawn-fcgi -a 127.0.0.1 -p 521 -C 5 -f /home/bbs/php/bin/php-cgi
+        /usr/sbin/lighttpd -f /home/bbs/php/etc/lighttpd.conf
+
+    然后用浏览器访问 http://localhost，就可以登录 kbs 的 web 界面。
+
+5. 其他
+    cygwin 中没有带 killall 程序，kbs 源代码的 contrib/ 提供了一个，可用来
+关闭 kbs 和 lighttpd 服务，用法为：
+        ./killall program_name [kill_option]

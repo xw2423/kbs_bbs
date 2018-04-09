@@ -1,0 +1,40 @@
+# Checking PHP script support
+if [ test -z "$with_php" ]; then
+  with_php="yes"
+fi
+
+AC_ARG_WITH(php,
+[  --with-php=path
+                          specify PHP installation directory],
+PHP_DIR="$withval", PHP_DIR="yes")
+
+if test "$PHP_DIR" != "no"; then
+  if test "$PHP_DIR" = "yes"; then
+    AC_PATH_PROG([PHPCONFIG], [php-config], [none],
+                 [/home/share/php/bin:/usr/local/bin:$PATH])
+  else
+    AC_PATH_PROG([PHPCONFIG], [php-config], [none],
+                 [$PHP_DIR/bin])
+  fi
+
+  if test "$PHPCONFIG" = "none"; then
+    AC_MSG_ERROR(php-config not found)
+  fi
+
+  PHP_OLD_CFLAGS=$CFLAGS
+  PHPINCLUDES=`$PHPCONFIG --includes`
+  CFLAGS="$PHPINCLUDES $CFLAGS"
+  AC_CHECK_DECL([_GNU_SOURCE], [],
+                [export PHPCFLAGS=-D_GNU_SOURCE], [#include <php.h>])
+  CFLAGS=$PHP_OLD_CFLAGS
+
+  PHPCFLAGS="$PHPINCLUDES $PHPCFLAGS"
+  PHPEXTDIR=`$PHPCONFIG --extension-dir`
+  AC_SUBST(PHPCFLAGS)
+  AC_SUBST(PHPEXTDIR)
+  AC_CONFIG_FILES([php/Makefile])
+  BBSSUBDIRS="$BBSSUBDIRS php"
+
+fi
+
+AC_CONFIG_FILES([php/config.m4])
